@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { X, Bell, User, Shield, Moon, LogOut } from 'lucide-react';
+import { X, Bell, Shield, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { useProfile } from '@/hooks/use-profile';
+import { toast } from 'sonner';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'general' | 'notifications';
+  initialTab?: 'general' | 'notifications' | 'privacy';
 }
 
 export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'notifications'>(initialTab);
+  const { profile, updatePrivacy } = useProfile();
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'privacy'>(initialTab);
   const [notifications, setNotifications] = useState({
     publication: true,
     likes: true,
@@ -20,15 +23,37 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
     replies: true,
   });
 
+  const [privacy, setPrivacy] = useState({
+    showAvatar: profile?.show_avatar ?? true,
+    showName: profile?.show_name ?? true,
+    showUsername: profile?.show_username ?? true,
+  });
+
+  const handlePrivacyChange = async (key: 'showAvatar' | 'showName' | 'showUsername', value: boolean) => {
+    const newPrivacy = { ...privacy, [key]: value };
+    setPrivacy(newPrivacy);
+
+    const success = await updatePrivacy({
+      show_avatar: newPrivacy.showAvatar,
+      show_name: newPrivacy.showName,
+      show_username: newPrivacy.showUsername,
+    });
+
+    if (success) {
+      toast.success('Настройки приватности обновлены');
+    } else {
+      // Revert on error
+      setPrivacy(privacy);
+      toast.error('Ошибка сохранения');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100]">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
       {/* Modal */}
       <div
@@ -56,20 +81,25 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
             onClick={() => setActiveTab('general')}
             className={cn(
               'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-              activeTab === 'general'
-                ? 'border-b-2 border-foreground text-foreground'
-                : 'text-muted-foreground'
+              activeTab === 'general' ? 'border-b-2 border-foreground text-foreground' : 'text-muted-foreground'
             )}
           >
             Общие
           </button>
           <button
+            onClick={() => setActiveTab('privacy')}
+            className={cn(
+              'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+              activeTab === 'privacy' ? 'border-b-2 border-foreground text-foreground' : 'text-muted-foreground'
+            )}
+          >
+            Приватность
+          </button>
+          <button
             onClick={() => setActiveTab('notifications')}
             className={cn(
               'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-              activeTab === 'notifications'
-                ? 'border-b-2 border-foreground text-foreground'
-                : 'text-muted-foreground'
+              activeTab === 'notifications' ? 'border-b-2 border-foreground text-foreground' : 'text-muted-foreground'
             )}
           >
             Уведомления
@@ -82,39 +112,59 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
                 <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                  <span>Редактировать профиль</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                  <span>Приватность</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
                   <Moon className="h-5 w-5 text-muted-foreground" />
                   <span>Темная тема</span>
                 </div>
                 <Switch checked={true} disabled />
               </div>
+            </div>
+          )}
 
-              <Button variant="outline" className="w-full gap-2 text-destructive">
-                <LogOut className="h-4 w-4" />
-                Выйти
-              </Button>
+          {activeTab === 'privacy' && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Управляйте тем, что видят другие пользователи
+              </p>
+
+              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+                <div>
+                  <p className="font-medium">Показывать аватар</p>
+                  <p className="text-xs text-muted-foreground">Если скрыто, отображается дефолтный аватар</p>
+                </div>
+                <Switch
+                  checked={privacy.showAvatar}
+                  onCheckedChange={(checked) => handlePrivacyChange('showAvatar', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+                <div>
+                  <p className="font-medium">Показывать имя</p>
+                  <p className="text-xs text-muted-foreground">Если скрыто, отображается «Аноним»</p>
+                </div>
+                <Switch
+                  checked={privacy.showName}
+                  onCheckedChange={(checked) => handlePrivacyChange('showName', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+                <div>
+                  <p className="font-medium">Показывать username</p>
+                  <p className="text-xs text-muted-foreground">Если скрыто, отображается «@скрыт»</p>
+                </div>
+                <Switch
+                  checked={privacy.showUsername}
+                  onCheckedChange={(checked) => handlePrivacyChange('showUsername', checked)}
+                />
+              </div>
             </div>
           )}
 
           {activeTab === 'notifications' && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Уведомления будут приходить в подключенный Telegram бот
-              </p>
-              
+              <p className="text-sm text-muted-foreground">Уведомления будут приходить в подключенный Telegram бот</p>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
                   <div>
@@ -123,9 +173,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
                   </div>
                   <Switch
                     checked={notifications.publication}
-                    onCheckedChange={(checked) =>
-                      setNotifications((prev) => ({ ...prev, publication: checked }))
-                    }
+                    onCheckedChange={(checked) => setNotifications((prev) => ({ ...prev, publication: checked }))}
                   />
                 </div>
 
@@ -136,9 +184,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
                   </div>
                   <Switch
                     checked={notifications.likes}
-                    onCheckedChange={(checked) =>
-                      setNotifications((prev) => ({ ...prev, likes: checked }))
-                    }
+                    onCheckedChange={(checked) => setNotifications((prev) => ({ ...prev, likes: checked }))}
                   />
                 </div>
 
@@ -149,9 +195,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
                   </div>
                   <Switch
                     checked={notifications.comments}
-                    onCheckedChange={(checked) =>
-                      setNotifications((prev) => ({ ...prev, comments: checked }))
-                    }
+                    onCheckedChange={(checked) => setNotifications((prev) => ({ ...prev, comments: checked }))}
                   />
                 </div>
 
@@ -162,9 +206,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
                   </div>
                   <Switch
                     checked={notifications.rep}
-                    onCheckedChange={(checked) =>
-                      setNotifications((prev) => ({ ...prev, rep: checked }))
-                    }
+                    onCheckedChange={(checked) => setNotifications((prev) => ({ ...prev, rep: checked }))}
                   />
                 </div>
 
@@ -175,9 +217,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
                   </div>
                   <Switch
                     checked={notifications.replies}
-                    onCheckedChange={(checked) =>
-                      setNotifications((prev) => ({ ...prev, replies: checked }))
-                    }
+                    onCheckedChange={(checked) => setNotifications((prev) => ({ ...prev, replies: checked }))}
                   />
                 </div>
               </div>

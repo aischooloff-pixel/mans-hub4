@@ -13,11 +13,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Crown, FileText, Bookmark, History, Star, Send, Globe } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { useArticles, Article } from '@/hooks/use-articles';
+import { useReputation } from '@/hooks/use-reputation';
 import { toast } from 'sonner';
 
 export default function Profile() {
   const { profile, loading: profileLoading, articlesCount, updateSocialLinks } = useProfile();
   const { getUserArticles } = useArticles();
+  const { getMyReputation } = useReputation();
   const [activeTab, setActiveTab] = useState('articles');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
@@ -26,18 +28,27 @@ export default function Profile() {
   const [isSocialLinksOpen, setIsSocialLinksOpen] = useState(false);
   const [userArticles, setUserArticles] = useState<Article[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(true);
+  const [reputation, setReputation] = useState(0);
 
   // Load user's articles
   useEffect(() => {
     const loadArticles = async () => {
-      if (!profile?.id) return;
       setArticlesLoading(true);
       const articles = await getUserArticles();
       setUserArticles(articles);
       setArticlesLoading(false);
     };
     loadArticles();
-  }, [profile?.id, getUserArticles]);
+  }, [getUserArticles]);
+
+  // Load reputation
+  useEffect(() => {
+    const loadRep = async () => {
+      const { reputation: rep } = await getMyReputation();
+      setReputation(rep);
+    };
+    loadRep();
+  }, [getMyReputation]);
 
   const handleSaveSocialLinks = async (telegram: string, website: string) => {
     const success = await updateSocialLinks(telegram, website);
@@ -85,6 +96,19 @@ export default function Profile() {
     }
   };
 
+  // Display values respecting privacy settings
+  const displayName = profile?.show_name !== false 
+    ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Пользователь'
+    : 'Аноним';
+  
+  const displayUsername = profile?.show_username !== false 
+    ? profile?.username || 'user'
+    : 'скрыт';
+  
+  const displayAvatar = profile?.show_avatar !== false
+    ? profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username || profile?.first_name}`
+    : `https://api.dicebear.com/7.x/shapes/svg?seed=${profile?.id}`;
+
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-background pb-24 pt-16">
@@ -128,8 +152,8 @@ export default function Profile() {
           <div className="flex items-start gap-4">
             <div className="relative">
               <img
-                src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || profile.first_name}`}
-                alt={profile.first_name || 'User'}
+                src={displayAvatar}
+                alt={displayName}
                 className="h-20 w-20 rounded-full object-cover"
               />
               {profile.is_premium && (
@@ -139,17 +163,15 @@ export default function Profile() {
               )}
             </div>
             <div className="flex-1">
-              <h1 className="font-heading text-xl font-bold">
-                {profile.first_name} {profile.last_name}
-              </h1>
-              <p className="text-sm text-muted-foreground">@{profile.username || 'user'}</p>
+              <h1 className="font-heading text-xl font-bold">{displayName}</h1>
+              <p className="text-sm text-muted-foreground">@{displayUsername}</p>
               <div className="mt-2 flex items-center gap-4">
                 <button
                   onClick={() => setIsRepHistoryOpen(true)}
                   className="flex items-center gap-1 hover:text-primary transition-colors"
                 >
                   <Star className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">{profile.reputation} rep</span>
+                  <span className="text-sm font-medium">{reputation} rep</span>
                 </button>
                 <button
                   onClick={() => setIsArticlesOpen(true)}
@@ -157,19 +179,21 @@ export default function Profile() {
                 >
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground hover:text-primary">
-                    {articlesCount} статей
+                    {userArticles.length} статей
                   </span>
                 </button>
               </div>
-              
+
               {/* Social Links for Premium Users */}
               {profile.is_premium && (
                 <div className="mt-3 flex items-center gap-3">
                   {profile.telegram_channel && (
                     <a
-                      href={profile.telegram_channel.startsWith('@') 
-                        ? `https://t.me/${profile.telegram_channel.slice(1)}` 
-                        : profile.telegram_channel}
+                      href={
+                        profile.telegram_channel.startsWith('@')
+                          ? `https://t.me/${profile.telegram_channel.slice(1)}`
+                          : profile.telegram_channel
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
@@ -189,10 +213,7 @@ export default function Profile() {
                       <span className="max-w-[120px] truncate">{profile.website.replace(/^https?:\/\//, '')}</span>
                     </a>
                   )}
-                  <button
-                    onClick={() => setIsSocialLinksOpen(true)}
-                    className="text-xs text-primary hover:underline"
-                  >
+                  <button onClick={() => setIsSocialLinksOpen(true)} className="text-xs text-primary hover:underline">
                     Изменить
                   </button>
                 </div>
@@ -217,9 +238,7 @@ export default function Profile() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-heading text-sm font-semibold">Перейти на Premium</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Безлимитные публикации и приоритетная модерация
-                  </p>
+                  <p className="text-xs text-muted-foreground">Безлимитные публикации и приоритетная модерация</p>
                 </div>
               </div>
             </button>
@@ -264,15 +283,17 @@ export default function Profile() {
                   <div className="space-y-3">
                     {userArticles.length > 0 ? (
                       userArticles.slice(0, 5).map((article, index) => (
-                        <div key={article.id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <div
+                          key={article.id}
+                          className="animate-slide-up"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium truncate flex-1">{article.title}</span>
                             {getStatusBadge(article.status)}
                           </div>
                           {article.status === 'rejected' && article.rejection_reason && (
-                            <p className="text-xs text-red-400 mb-2">
-                              Причина: {article.rejection_reason}
-                            </p>
+                            <p className="text-xs text-red-400 mb-2">Причина: {article.rejection_reason}</p>
                           )}
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {article.preview || article.body.substring(0, 100)}
@@ -281,9 +302,7 @@ export default function Profile() {
                         </div>
                       ))
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">
-                        У вас пока нет статей
-                      </p>
+                      <p className="py-8 text-center text-muted-foreground">У вас пока нет статей</p>
                     )}
                   </div>
                 )}
@@ -293,9 +312,7 @@ export default function Profile() {
             <TabsContent value="favorites">
               <div className="rounded-2xl bg-card p-4">
                 <h2 className="mb-4 font-heading text-lg font-semibold">Избранное</h2>
-                <p className="py-8 text-center text-muted-foreground">
-                  Избранных статей пока нет
-                </p>
+                <p className="py-8 text-center text-muted-foreground">Избранных статей пока нет</p>
               </div>
             </TabsContent>
 
@@ -318,10 +335,7 @@ export default function Profile() {
         onClose={() => setIsArticlesOpen(false)}
         articles={userArticles.map(mapArticleToListFormat)}
       />
-      <ReputationHistoryModal
-        isOpen={isRepHistoryOpen}
-        onClose={() => setIsRepHistoryOpen(false)}
-      />
+      <ReputationHistoryModal isOpen={isRepHistoryOpen} onClose={() => setIsRepHistoryOpen(false)} />
       <SocialLinksModal
         isOpen={isSocialLinksOpen}
         onClose={() => setIsSocialLinksOpen(false)}

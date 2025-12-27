@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useProfile } from './use-profile';
 import { toast } from 'sonner';
 
 export interface Article {
@@ -30,6 +29,9 @@ export interface Article {
     avatar_url: string | null;
     is_premium: boolean | null;
     reputation: number | null;
+    show_avatar?: boolean | null;
+    show_name?: boolean | null;
+    show_username?: boolean | null;
   } | null;
 }
 
@@ -45,18 +47,22 @@ export interface CreateArticleData {
   sources?: string[];
 }
 
+function getInitData() {
+  // @ts-ignore
+  return window.Telegram?.WebApp?.initData || '';
+}
+
 export function useArticles() {
-  const { profile } = useProfile();
   const [loading, setLoading] = useState(false);
 
-  // Get approved articles
+  // Get approved articles (public, no auth needed)
   const getApprovedArticles = useCallback(async (limit = 20) => {
     try {
       const { data, error } = await supabase
         .from('articles')
         .select(`
           *,
-          author:author_id(id, first_name, last_name, username, avatar_url, is_premium, reputation)
+          author:author_id(id, first_name, last_name, username, avatar_url, is_premium, reputation, show_avatar, show_name, show_username)
         `)
         .eq('status', 'approved')
         .order('created_at', { ascending: false })
@@ -70,81 +76,58 @@ export function useArticles() {
     }
   }, []);
 
-  // Get user's articles
+  // Get user's articles via backend function
   const getUserArticles = useCallback(async () => {
-    if (!profile?.id) return [];
+    const initData = getInitData();
+    if (!initData) return [];
 
     try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('author_id', profile.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('tg-my-articles', {
+        body: { initData },
+      });
 
       if (error) throw error;
-      return data as Article[];
+      return (data?.articles || []) as Article[];
     } catch (err) {
       console.error('Error fetching user articles:', err);
       return [];
     }
-  }, [profile?.id]);
+  }, []);
 
-  // Create article
+  // Create article via backend function
   const createArticle = useCallback(async (articleData: CreateArticleData) => {
-    if (!profile?.id) {
-      toast.error('Необходимо авторизоваться');
+    const initData = getInitData();
+    if (!initData) {
+      toast.error('Необходимо авторизоваться через Telegram');
       return null;
     }
 
     setLoading(true);
     try {
-      // Generate preview from body if not provided
-      const preview = articleData.preview || articleData.body.substring(0, 200);
-
-      // Determine media type from URL
-      let mediaType = articleData.media_type;
-      if (articleData.media_url && !mediaType) {
-        if (articleData.media_url.includes('youtube.com') || articleData.media_url.includes('youtu.be')) {
-          mediaType = 'youtube';
-        } else {
-          mediaType = 'image';
-        }
-      }
-
-      const { data: article, error } = await supabase
-        .from('articles')
-        .insert({
-          author_id: profile.id,
-          category_id: articleData.category_id || null,
-          title: articleData.title,
-          body: articleData.body,
-          preview: preview,
-          media_url: articleData.media_url || null,
-          media_type: mediaType || null,
-          is_anonymous: articleData.is_anonymous || false,
-          allow_comments: articleData.allow_comments !== false,
-          status: 'pending',
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('tg-create-article', {
+        body: { initData, article: articleData },
+      });
 
       if (error) {
         console.error('Error creating article:', error);
         throw error;
       }
 
+      if (!data?.article) {
+        throw new Error('Не удалось создать статью');
+      }
+
       // Send moderation request
       try {
         await supabase.functions.invoke('send-moderation', {
-          body: { articleId: article.id },
+          body: { articleId: data.article.id },
         });
       } catch (modError) {
         console.error('Error sending moderation request:', modError);
-        // Don't fail the whole operation if moderation request fails
       }
 
       toast.success('Статья отправлена на модерацию');
-      return article;
+      return data.article;
     } catch (err: any) {
       console.error('Error creating article:', err);
       toast.error(err.message || 'Ошибка создания статьи');
@@ -152,48 +135,13 @@ export function useArticles() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.id]);
+  }, []);
 
-  // Update article
+  // Update article (placeholder - implement if needed)
   const updateArticle = useCallback(async (articleId: string, updates: Partial<CreateArticleData>) => {
-    if (!profile?.id) {
-      toast.error('Необходимо авторизоваться');
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('articles')
-        .update({
-          ...updates,
-          status: 'pending', // Re-submit for moderation
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', articleId)
-        .eq('author_id', profile.id);
-
-      if (error) throw error;
-
-      // Send moderation request
-      try {
-        await supabase.functions.invoke('send-moderation', {
-          body: { articleId },
-        });
-      } catch (modError) {
-        console.error('Error sending moderation request:', modError);
-      }
-
-      toast.success('Статья обновлена и отправлена на модерацию');
-      return true;
-    } catch (err: any) {
-      console.error('Error updating article:', err);
-      toast.error(err.message || 'Ошибка обновления статьи');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [profile?.id]);
+    toast.error('Редактирование статей пока недоступно');
+    return false;
+  }, []);
 
   return {
     loading,

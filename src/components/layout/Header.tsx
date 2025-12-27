@@ -7,26 +7,16 @@ import { ProfileModal } from '@/components/profile/ProfileModal';
 import { SideMenu } from '@/components/header/SideMenu';
 import { SearchModal } from '@/components/header/SearchModal';
 import { NotificationsModal } from '@/components/header/NotificationsModal';
-import { currentUser as mockUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { useTelegram } from '@/hooks/use-telegram';
+import { useProfile } from '@/hooks/use-profile';
 
 export function Header() {
-  const { user: tgUser } = useTelegram();
+  const { profile } = useProfile();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  const currentUser = tgUser ? {
-    ...mockUser,
-    first_name: tgUser.first_name,
-    last_name: tgUser.last_name || '',
-    username: tgUser.username || mockUser.username,
-    avatar_url: tgUser.photo_url || mockUser.avatar_url,
-    is_premium: tgUser.is_premium || mockUser.is_premium
-  } : mockUser;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -34,14 +24,35 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Display values respecting privacy settings
+  const displayName = profile?.show_name !== false
+    ? profile?.first_name || 'Пользователь'
+    : 'Аноним';
+
+  const displayAvatar = profile?.show_avatar !== false
+    ? profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username || profile?.first_name}`
+    : `https://api.dicebear.com/7.x/shapes/svg?seed=${profile?.id}`;
+
+  // Build currentUser for ProfileModal
+  const currentUser = {
+    id: profile?.id || '',
+    telegram_id: profile?.telegram_id || 0,
+    username: profile?.show_username !== false ? profile?.username || 'user' : 'скрыт',
+    first_name: profile?.show_name !== false ? profile?.first_name || 'Пользователь' : 'Аноним',
+    last_name: profile?.show_name !== false ? profile?.last_name || '' : '',
+    avatar_url: displayAvatar,
+    reputation: profile?.reputation || 0,
+    articles_count: 0,
+    is_premium: profile?.is_premium || false,
+    created_at: profile?.created_at || '',
+  };
+
   return (
     <>
       <header
         className={cn(
           'fixed left-0 right-0 top-0 z-50 transition-all duration-300',
-          isScrolled
-            ? 'bg-background/80 backdrop-blur-xl border-b border-border'
-            : 'bg-transparent'
+          isScrolled ? 'bg-background/80 backdrop-blur-xl border-b border-border' : 'bg-transparent'
         )}
       >
         <div className="container flex h-16 items-center justify-between">
@@ -60,15 +71,10 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="touch-target"
-              onClick={() => setIsSearchOpen(true)}
-            >
+            <Button variant="ghost" size="icon" className="touch-target" onClick={() => setIsSearchOpen(true)}>
               <Search className="h-5 w-5" />
             </Button>
-            
+
             <Button
               variant="ghost"
               size="icon"
@@ -79,17 +85,8 @@ export function Header() {
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" />
             </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="touch-target"
-              onClick={() => setIsProfileOpen(true)}
-            >
-              <img
-                src={currentUser.avatar_url}
-                alt={currentUser.first_name}
-                className="h-8 w-8 rounded-full border border-border"
-              />
+            <Button variant="ghost" size="icon" className="touch-target" onClick={() => setIsProfileOpen(true)}>
+              <img src={displayAvatar} alt={displayName} className="h-8 w-8 rounded-full border border-border" />
             </Button>
           </div>
         </div>
