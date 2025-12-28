@@ -1161,12 +1161,17 @@ async function handlePendingSupportAnswer(chatId: number, userId: number, text: 
 
   // Get original question for context
   let originalQuestion = '';
+  let questionId = '';
   if (questionShortId && questionShortId !== 'none') {
-    const { data: q } = await supabase
+    // Search for question by ID prefix using filter
+    const { data: questions } = await supabase
       .from('support_questions')
       .select('id, question')
-      .ilike('id', `${questionShortId}%`)
-      .maybeSingle();
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    const q = questions?.find(question => question.id.startsWith(questionShortId));
     
     if (q) {
       originalQuestion = q.question;
