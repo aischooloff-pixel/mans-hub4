@@ -1,73 +1,146 @@
-# Welcome to your Lovable project
+# AI School Off — Telegram Mini App
 
-## Project info
+Telegram Mini App для публикации статей с системой репутации, модерацией и профилями пользователей.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🏗️ Технологический стек
 
-## How can I edit this code?
+### Frontend
+- **React 18** + **TypeScript**
+- **Vite** — сборщик
+- **Tailwind CSS** — стилизация
+- **shadcn/ui** — UI компоненты
+- **TanStack Query** — управление состоянием сервера
+- **React Router** — маршрутизация
 
-There are several ways of editing your application.
+### Backend (Lovable Cloud)
+- **Supabase** — база данных PostgreSQL
+- **Edge Functions** — серверная логика
+- **Row Level Security (RLS)** — безопасность данных
 
-**Use Lovable**
+## 📁 Структура проекта
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```
+src/
+├── components/
+│   ├── articles/        # Компоненты статей
+│   ├── categories/      # Категории
+│   ├── cta/             # Call-to-action
+│   ├── header/          # Шапка (поиск, уведомления, меню)
+│   ├── layout/          # Layout компоненты
+│   ├── podcasts/        # Подкасты
+│   ├── premium/         # Premium функции
+│   ├── profile/         # Профиль пользователя
+│   ├── ui/              # shadcn/ui компоненты
+│   └── welcome/         # Приветственный модал
+├── hooks/
+│   ├── use-articles.ts  # Хук для статей
+│   ├── use-profile.ts   # Хук для профиля
+│   ├── use-reputation.ts # Хук для репутации
+│   └── use-telegram.ts  # Хук для Telegram WebApp
+├── pages/
+│   ├── Index.tsx        # Главная страница
+│   ├── Hub.tsx          # Хаб статей
+│   ├── Profile.tsx      # Страница профиля
+│   ├── Admin.tsx        # Админ панель
+│   └── AdminAuth.tsx    # Авторизация админа
+└── integrations/
+    └── supabase/        # Supabase клиент и типы
 
-Changes made via Lovable will be committed automatically to this repo.
+supabase/
+└── functions/
+    ├── telegram-bot/      # Основной бот
+    ├── admin-bot/         # Админ бот
+    ├── tg-create-article/ # Создание статьи
+    ├── tg-my-articles/    # Мои статьи
+    ├── tg-my-reputation/  # Моя репутация
+    ├── tg-sync-profile/   # Синхронизация профиля
+    ├── tg-update-privacy/ # Настройки приватности
+    └── send-moderation/   # Отправка на модерацию
+```
 
-**Use your preferred IDE**
+## 🗄️ База данных
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Таблицы
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Таблица | Описание |
+|---------|----------|
+| `profiles` | Профили пользователей (связь через telegram_id) |
+| `articles` | Статьи с модерацией |
+| `reputation_history` | История изменений репутации |
+| `moderation_logs` | Логи модерации |
+| `pending_rejections` | Ожидающие отклонения |
+| `moderation_short_ids` | Короткие ID для модерации |
+| `support_questions` | Вопросы в поддержку |
+| `user_roles` | Роли пользователей (admin, moderator, user) |
+| `admin_settings` | Настройки администратора |
 
-Follow these steps:
+## 🔐 Edge Functions
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+| Функция | Описание | JWT |
+|---------|----------|-----|
+| `telegram-bot` | Обработка команд бота | ❌ |
+| `admin-bot` | Админ команды | ❌ |
+| `tg-create-article` | Создание статьи | ❌ |
+| `tg-my-articles` | Получение статей пользователя | ❌ |
+| `tg-my-reputation` | Получение репутации | ❌ |
+| `tg-sync-profile` | Синхронизация профиля из Telegram | ❌ |
+| `tg-update-privacy` | Обновление настроек приватности | ❌ |
+| `send-moderation` | Отправка статьи на модерацию | ❌ |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🔑 Необходимые секреты
 
-# Step 3: Install the necessary dependencies.
-npm i
+| Секрет | Описание |
+|--------|----------|
+| `TELEGRAM_BOT_TOKEN` | Токен основного бота |
+| `ADMIN_BOT_TOKEN` | Токен админ бота |
+| `TELEGRAM_ADMIN_CHAT_ID` | ID чата для модерации |
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## ⚠️ Известные проблемы и ограничения
+
+### 1. Требуется открытие через Telegram
+Приложение **обязательно** должно открываться через Telegram бота для получения `initData`. При открытии напрямую в браузере:
+- `initData` будет пустым
+- Профиль не синхронизируется
+- Создание статей недоступно ("Unauthorized")
+
+### 2. Аутентификация
+- Используется Telegram WebApp аутентификация, НЕ Supabase Auth
+- Пользователи идентифицируются по `telegram_id`
+
+## 📝 История изменений
+
+### v1.0.0 (Текущая)
+- ✅ Базовая структура приложения
+- ✅ Система профилей с синхронизацией из Telegram
+- ✅ Создание и модерация статей
+- ✅ Система репутации
+- ✅ Настройки приватности
+- ✅ Админ панель
+- ✅ Telegram боты (основной + админ)
+
+### Исправленные баги
+- ✅ TS1128 в use-reputation.ts (дублированный return)
+- ✅ Улучшена обработка ошибок Edge Functions
+- ✅ Добавлена кнопка "Повторить" при ошибке загрузки профиля
+
+### Известные TODO
+- ⏳ Режим разработки для тестирования без Telegram
+- ⏳ Полноценная валидация initData на бэкенде
+
+## 🚀 Запуск
+
+### Разработка
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Требования
+- Node.js 18+
+- Подключенный Lovable Cloud
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📚 Полезные ссылки
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- [Telegram Mini Apps](https://core.telegram.org/bots/webapps)
+- [Lovable Docs](https://docs.lovable.dev/)
+- [Supabase Docs](https://supabase.com/docs)
