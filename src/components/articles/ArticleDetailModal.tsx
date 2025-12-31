@@ -37,12 +37,14 @@ interface ArticleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   article: Article | null;
+  onAuthorClick?: (authorId: string) => void;
 }
 
 export function ArticleDetailModal({
   isOpen,
   onClose,
   article,
+  onAuthorClick,
 }: ArticleDetailModalProps) {
   const [comment, setComment] = useState('');
   const [isLiked, setIsLiked] = useState(false);
@@ -219,7 +221,15 @@ export function ArticleDetailModal({
           {/* Author Section */}
           {article.author && !article.is_anonymous && (
             <div className="border-b border-border p-4">
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  if (onAuthorClick && article.author) {
+                    onAuthorClick(article.author.id);
+                  }
+                }}
+                className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
+                disabled={!onAuthorClick}
+              >
                 <img
                   src={article.author.avatar_url || '/placeholder.svg'}
                   alt={article.author.first_name}
@@ -238,7 +248,7 @@ export function ArticleDetailModal({
                     <p className="text-sm text-muted-foreground">@{article.author.username}</p>
                   )}
                 </div>
-              </div>
+              </button>
               
               {/* Author Stats */}
               <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">

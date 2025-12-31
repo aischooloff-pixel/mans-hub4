@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Check, Crown, Sparkles, MessageCircle, Users, Infinity, BadgeCheck, Bot, FileText, Headphones, Music, ShoppingBag, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Check, Crown, Sparkles, MessageCircle, Users, Infinity, BadgeCheck, Bot, FileText, Headphones, Music, ShoppingBag, GraduationCap, ChevronLeft, ChevronRight, Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -29,6 +31,10 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [currentSlide, setCurrentSlide] = useState(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoApplied, setPromoApplied] = useState(false);
   const [pricing, setPricing] = useState<PricingData>({
     plus: { monthly: 299, yearly: 2510, monthlyOriginal: 598, yearlyOriginal: 5020 },
     premium: { monthly: 2490, yearly: 20916, monthlyOriginal: 4980, yearlyOriginal: 41832 },
@@ -38,6 +44,10 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
   useEffect(() => {
     if (isOpen) {
       loadPricing();
+      // Reset promo state when modal opens
+      setPromoCode('');
+      setPromoDiscount(0);
+      setPromoApplied(false);
     }
   }, [isOpen]);
 
@@ -86,6 +96,14 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
 
   if (!isOpen) return null;
 
+  // Calculate prices with promo discount applied
+  const getPrice = (basePrice: number) => {
+    if (promoDiscount > 0) {
+      return Math.round(basePrice * (1 - promoDiscount / 100));
+    }
+    return basePrice;
+  };
+
   const plans = [
     {
       id: 'free',
@@ -104,8 +122,14 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
       id: 'plus',
       name: 'Plus',
       description: 'Расширенные возможности',
-      price: { monthly: pricing.plus.monthly, yearly: pricing.plus.yearly },
-      originalPrice: { monthly: pricing.plus.monthlyOriginal, yearly: pricing.plus.yearlyOriginal },
+      price: { 
+        monthly: getPrice(pricing.plus.monthly), 
+        yearly: getPrice(pricing.plus.yearly) 
+      },
+      originalPrice: { 
+        monthly: promoDiscount > 0 ? pricing.plus.monthly : pricing.plus.monthlyOriginal, 
+        yearly: promoDiscount > 0 ? pricing.plus.yearly : pricing.plus.yearlyOriginal 
+      },
       features: [
         { icon: MessageCircle, text: 'Соц сети в профиле' },
         { icon: FileText, text: 'Описание профиля' },
@@ -120,8 +144,14 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
       id: 'premium',
       name: 'Premium',
       description: 'Максимум возможностей',
-      price: { monthly: pricing.premium.monthly, yearly: pricing.premium.yearly },
-      originalPrice: { monthly: pricing.premium.monthlyOriginal, yearly: pricing.premium.yearlyOriginal },
+      price: { 
+        monthly: getPrice(pricing.premium.monthly), 
+        yearly: getPrice(pricing.premium.yearly) 
+      },
+      originalPrice: { 
+        monthly: promoDiscount > 0 ? pricing.premium.monthly : pricing.premium.monthlyOriginal, 
+        yearly: promoDiscount > 0 ? pricing.premium.yearly : pricing.premium.yearlyOriginal 
+      },
       features: [
         { icon: Sparkles, text: 'Все что в Plus' },
         { icon: Crown, text: 'Сообщество предпринимателей' },
@@ -131,6 +161,39 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
       popular: false,
     },
   ];
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    
+    setPromoLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', promoCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (error || !data) {
+        toast.error('Промокод не найден или истёк');
+        setPromoDiscount(0);
+        setPromoApplied(false);
+      } else if (data.max_uses && data.uses_count >= data.max_uses) {
+        toast.error('Промокод больше не действует');
+        setPromoDiscount(0);
+        setPromoApplied(false);
+      } else {
+        setPromoDiscount(data.discount_percent);
+        setPromoApplied(true);
+        toast.success(`Промокод применён! Скидка ${data.discount_percent}%`);
+      }
+    } catch (err) {
+      console.error('Error applying promo:', err);
+      toast.error('Ошибка при проверке промокода');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const handlePayment = (planId: string) => {
     console.log('Processing payment for', planId, 'plan,', billingPeriod);
@@ -190,12 +253,39 @@ export function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
             <h2 className="mb-2 font-heading text-2xl font-bold">Выберите тариф</h2>
             <div className="flex items-center justify-center gap-2 mb-4">
               <span className="rounded-full bg-destructive px-4 py-2 text-base font-bold text-destructive-foreground">
-                Скидка {pricing.discount}%
+                Скидка {promoDiscount > 0 ? promoDiscount : pricing.discount}%
               </span>
             </div>
             <p className="text-muted-foreground text-sm">
               Выберите годовой тариф для экономии 30%
             </p>
+          </div>
+
+          {/* Promo Code Input */}
+          <div className="flex gap-2 mb-6">
+            <div className="relative flex-1">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                placeholder="Промокод"
+                className="pl-9"
+                disabled={promoApplied}
+              />
+            </div>
+            <Button
+              onClick={handleApplyPromo}
+              disabled={promoLoading || promoApplied || !promoCode.trim()}
+              variant={promoApplied ? 'secondary' : 'default'}
+            >
+              {promoLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : promoApplied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                'Применить'
+              )}
+            </Button>
           </div>
 
           {/* Billing Toggle */}

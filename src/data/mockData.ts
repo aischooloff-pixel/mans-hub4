@@ -81,6 +81,9 @@ export const mockCategories: Category[] = [
   { id: '5', name: 'Образование', slug: 'education', icon: '📚', topics_count: 3 },
   { id: '6', name: 'Психология', slug: 'psychology', icon: '🧠', topics_count: 2 },
   { id: '7', name: 'Социализация', slug: 'socialization', icon: '🤝', topics_count: 0 },
+  { id: '8', name: 'Женщины', slug: 'women', icon: '👩', topics_count: 0 },
+  { id: '9', name: 'Спорт', slug: 'sport', icon: '⚽', topics_count: 0 },
+  { id: '10', name: 'Работа', slug: 'work', icon: '💻', topics_count: 0 },
 ];
 
 export const mockTopics: Topic[] = [

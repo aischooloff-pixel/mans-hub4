@@ -9,9 +9,10 @@ interface ArticleCardProps {
   className?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
+  onAuthorClick?: (authorId: string) => void;
 }
 
-export function ArticleCard({ article, variant = 'default', className, style, onClick }: ArticleCardProps) {
+export function ArticleCard({ article, variant = 'default', className, style, onClick, onAuthorClick }: ArticleCardProps) {
   const author = article.is_anonymous ? null : article.author;
 
   if (variant === 'featured') {
@@ -39,7 +40,13 @@ export function ArticleCard({ article, variant = 'default', className, style, on
         <div className="flex flex-1 flex-col p-4">
           <div className="mb-2 flex items-center gap-2">
             {author ? (
-              <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onAuthorClick) onAuthorClick(author.id);
+                }}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
                 <img
                   src={author.avatar_url}
                   alt={author.first_name}
@@ -51,7 +58,7 @@ export function ArticleCard({ article, variant = 'default', className, style, on
                 {author.is_premium && (
                   <Crown className="h-4 w-4 text-yellow-500" />
                 )}
-              </>
+              </button>
             ) : (
               <span className="text-xs text-muted-foreground">Аноним</span>
             )}
@@ -148,7 +155,13 @@ export function ArticleCard({ article, variant = 'default', className, style, on
       <div className="p-4">
         <div className="mb-3 flex items-center gap-2">
           {author ? (
-            <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onAuthorClick) onAuthorClick(author.id);
+              }}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               <img
                 src={author.avatar_url}
                 alt={author.first_name}
@@ -165,7 +178,7 @@ export function ArticleCard({ article, variant = 'default', className, style, on
                   Rep: {author.reputation}
                 </span>
               </div>
-            </>
+            </button>
           ) : (
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">

@@ -14,6 +14,7 @@ import { WelcomeModal, useWelcomeModal } from '@/components/welcome/WelcomeModal
 import { AIAssistantSection } from '@/components/ai/AIAssistantSection';
 import { ReviewsSection } from '@/components/reviews/ReviewsSection';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PublicProfileModal } from '@/components/profile/PublicProfileModal';
 import { mockCategories } from '@/data/mockData';
 import { Category, Article as ArticleType } from '@/types';
 import { useProfile } from '@/hooks/use-profile';
@@ -29,6 +30,13 @@ export default function Index() {
   const [articlesLoading, setArticlesLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState<ArticleType | null>(null);
   const [isArticleDetailOpen, setIsArticleDetailOpen] = useState(false);
+  const [publicProfileAuthorId, setPublicProfileAuthorId] = useState<string | null>(null);
+  const [isPublicProfileOpen, setIsPublicProfileOpen] = useState(false);
+
+  const handleAuthorClick = (authorId: string) => {
+    setPublicProfileAuthorId(authorId);
+    setIsPublicProfileOpen(true);
+  };
 
   const handleArticleClick = (article: Article) => {
     // Convert to ArticleType for the modal
@@ -340,6 +348,13 @@ export default function Index() {
         isOpen={isArticleDetailOpen}
         onClose={() => setIsArticleDetailOpen(false)}
         article={selectedArticle}
+        onAuthorClick={handleAuthorClick}
+      />
+      
+      <PublicProfileModal
+        isOpen={isPublicProfileOpen}
+        onClose={() => setIsPublicProfileOpen(false)}
+        authorId={publicProfileAuthorId}
       />
       
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}

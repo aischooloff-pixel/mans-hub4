@@ -132,6 +132,7 @@ async function handleStart(chatId: number, userId: number) {
 👥 /users — Список пользователей
 👑 /premium — Управление подписками
 💰 /prices — Управление ценами тарифов
+🎟 /pr — Управление промокодами
 📝 /pending — Статьи на модерации
 📰 /st — Список статей
 🚨 /zb — Жалобы на статьи
@@ -150,6 +151,10 @@ async function handleStart(chatId: number, userId: number) {
 <b>Управление ценами:</b>
 /set_price [plus|premium] [monthly|yearly] [цена] — Установить цену
 /set_discount [процент] — Установить скидку
+
+<b>Промокоды:</b>
+/pr — Список промокодов
+/pr_add [КОД] [скидка%] — Создать промокод
 
 <b>Поиск статей:</b>
 /search_st [запрос] — Поиск по заголовку
@@ -3320,6 +3325,11 @@ Deno.serve(async (req) => {
         await handlePodcasts(chat.id, from.id);
       } else if (text === '/pl') {
         await handlePlaylists(chat.id, from.id);
+      } else if (text === '/pr') {
+        await handlePromoCodes(chat.id, from.id);
+      } else if (text?.startsWith('/pr_add ')) {
+        const args = text.replace('/pr_add ', '').trim();
+        await handleAddPromoCode(chat.id, from.id, args);
       } else if (text === '/help') {
         await handleStart(chat.id, from.id);
       } else {
