@@ -12,7 +12,7 @@ import { useTelegram } from '@/hooks/use-telegram';
 import { toast } from 'sonner';
 import { Loader2, Send, CheckCircle } from 'lucide-react';
 import { PodcastPlayerModal } from '@/components/podcasts/PodcastPlayerModal';
-import { AuthorBadge } from '@/components/profile/UserBadges';
+import { UserBadges, AuthorBadge } from '@/components/profile/UserBadges';
 import type { Article } from '@/types';
 
 interface ReputationHistoryEntry {
@@ -442,9 +442,9 @@ export function PublicProfileModal({ isOpen, onClose, authorId }: PublicProfileM
                     <p className="mb-2 text-sm text-muted-foreground">@{displayUsername}</p>
                   )}
 
-                  {/* Badge */}
+                  {/* Badges - show all badges in profile */}
                   <div className="mb-3">
-                    <AuthorBadge userProfileId={profile.id} />
+                    <UserBadges userProfileId={profile.id} variant="full" />
                   </div>
 
                   {/* Bio */}

@@ -46,6 +46,9 @@ export function getBadgeInfo(type: BadgeType): { name: string; emoji: string; pr
   return BADGE_INFO[type] || { name: type, emoji: '🏅', priority: 0 };
 }
 
+// Staff badges that should always be shown in articles
+const STAFF_BADGES: BadgeType[] = ['founder', 'moderator_badge', 'partner'];
+
 export function useBadges() {
   const [loading, setLoading] = useState(false);
 
@@ -92,9 +95,17 @@ export function useBadges() {
     return badges.length > 0 ? badges[0] : null;
   }, [getUserBadges]);
 
+  // Get only staff badges (for article cards)
+  const getStaffBadge = useCallback(async (userProfileId: string): Promise<Badge | null> => {
+    const badges = await getUserBadges(userProfileId);
+    const staffBadge = badges.find(b => STAFF_BADGES.includes(b.type));
+    return staffBadge || null;
+  }, [getUserBadges]);
+
   return {
     getUserBadges,
     getTopBadge,
+    getStaffBadge,
     getBadgeInfo,
     loading,
   };

@@ -90,21 +90,27 @@ export function UserBadges({ userProfileId, variant = 'full', className }: UserB
   );
 }
 
-// Compact badge display component for article cards
+// Badge display for article cards (shows only staff badges)
 interface AuthorBadgeProps {
   userProfileId: string;
   className?: string;
   variant?: 'default' | 'compact';
+  staffOnly?: boolean; // If true, only show staff badges (for articles)
 }
 
-export function AuthorBadge({ userProfileId, className, variant = 'default' }: AuthorBadgeProps) {
-  const { getTopBadge } = useBadges();
+export function AuthorBadge({ userProfileId, className, variant = 'default', staffOnly = true }: AuthorBadgeProps) {
+  const { getTopBadge, getStaffBadge } = useBadges();
   const [badge, setBadge] = useState<Badge | null>(null);
 
   useEffect(() => {
     if (!userProfileId) return;
-    getTopBadge(userProfileId).then(setBadge);
-  }, [userProfileId, getTopBadge]);
+    // For articles - only staff badges; for profiles - top badge
+    if (staffOnly) {
+      getStaffBadge(userProfileId).then(setBadge);
+    } else {
+      getTopBadge(userProfileId).then(setBadge);
+    }
+  }, [userProfileId, getTopBadge, getStaffBadge, staffOnly]);
 
   if (!badge) return null;
 
