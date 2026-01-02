@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Shield, AlertTriangle, Ban, Link2, MessageSquare, CheckCircle } from 'lucide-react';
+import { X, Shield, AlertTriangle, Ban, Link2, MessageSquare, CheckCircle, LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +32,11 @@ const rules = [
     icon: Link2,
     title: 'Без рекламы и спама',
     description: 'Нельзя рекламировать свои каналы, аккаунты, продукты. Запрещён спам, самопиар и размещение сторонних ссылок.',
+  },
+  {
+    icon: LinkIcon,
+    title: 'Без ссылок в комментариях',
+    description: 'Запрещено размещать любые ссылки в комментариях. Комментарии со ссылками будут автоматически заблокированы.',
   },
   {
     icon: MessageSquare,
