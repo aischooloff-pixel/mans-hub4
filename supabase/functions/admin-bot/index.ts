@@ -16,6 +16,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const USERS_PER_PAGE = 20;
 const ARTICLES_PER_PAGE = 10;
 
+function escapeHtml(input: string) {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Send message via Admin Bot
 async function sendAdminMessage(chatId: string | number, text: string, options: any = {}) {
   const url = `https://api.telegram.org/bot${ADMIN_BOT_TOKEN}/sendMessage`;
@@ -2157,7 +2166,7 @@ async function handleArticles(chatId: number, userId: number, page: number = 0, 
 
   let message = `📰 <b>Опубликованные статьи</b> (${totalCount || 0})`;
   if (searchQuery) {
-    message += `\n🔍 Поиск: "${searchQuery}"`;
+    message += `\n🔍 Поиск: "${escapeHtml(searchQuery)}"`;
   }
   message += `\n📄 Страница ${page + 1}/${totalPages || 1}\n\n`;
 
@@ -2166,14 +2175,16 @@ async function handleArticles(chatId: number, userId: number, page: number = 0, 
   } else {
     for (const article of articles) {
       const authorData = article.author as any;
-      const authorDisplay = authorData?.username ? `@${authorData.username}` : `ID:${authorData?.telegram_id || 'N/A'}`;
+      const authorDisplay = authorData?.username ? `@${escapeHtml(authorData.username)}` : `ID:${authorData?.telegram_id || 'N/A'}`;
       const date = new Date(article.created_at).toLocaleDateString('ru-RU');
       const time = new Date(article.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      
-      message += `📄 <b>${article.title.substring(0, 40)}${article.title.length > 40 ? '...' : ''}</b>\n`;
+
+      const titlePreview = article.title.substring(0, 40);
+      message += `📄 <b>${escapeHtml(titlePreview)}${article.title.length > 40 ? '...' : ''}</b>\n`;
       message += `   👤 ${authorDisplay} | 📅 ${date} ${time}\n\n`;
     }
   }
+
 
   message += `\n🔍 Поиск: <code>/search_st запрос</code>`;
 
