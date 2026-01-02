@@ -1725,6 +1725,45 @@ async function handlePromoCodeCallback(callbackQuery: any, action: string, promo
   }
 }
 
+// Generate one-time invite link for closed community
+async function generateCommunityInviteLink(): Promise<string | null> {
+  const botToken = Deno.env.get('COMMUNITY_BOT_TOKEN');
+  const chatId = Deno.env.get('COMMUNITY_CHAT_ID');
+  
+  if (!botToken || !chatId) {
+    console.log('Community bot token or chat ID not configured');
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/createChatInviteLink`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          member_limit: 1, // One-time use
+          creates_join_request: true, // Requires admin approval
+        }),
+      }
+    );
+
+    const data = await response.json();
+    console.log('Create invite link response:', JSON.stringify(data));
+
+    if (data.ok && data.result?.invite_link) {
+      return data.result.invite_link;
+    } else {
+      console.error('Failed to create invite link:', data);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error creating invite link:', error);
+    return null;
+  }
+}
+
 // Subscription callback handlers
 async function handleSubGrantPlus(callbackQuery: any, telegramId: string) {
   const { id, message } = callbackQuery;
@@ -1735,10 +1774,20 @@ async function handleSubGrantPlus(callbackQuery: any, telegramId: string) {
   if (!profile) { await answerCallbackQuery(id, '❌ Не найден'); return; }
 
   await supabase.from('profiles').update({ subscription_tier: 'plus', is_premium: true, premium_expires_at: expiresAt.toISOString(), updated_at: new Date().toISOString() }).eq('id', profile.id);
-  await sendUserMessage(telegramId, `🎉 Вам выдана <b>Plus</b> подписка на 30 дней!\n\n🤖 ИИ ассистент\n♾ Безлимит публикаций\n📱 Соц сети в профиле\n🔐 Закрытое сообщество\n🔵 Значок Plus\n\nДо: ${expiresAt.toLocaleDateString('ru-RU')}`);
+  
+  // Generate community invite link
+  const inviteLink = await generateCommunityInviteLink();
+  
+  let userMessage = `🎉 Вам выдана <b>Plus</b> подписка на 30 дней!\n\n🤖 ИИ ассистент\n♾ Безлимит публикаций\n📱 Соц сети в профиле\n🔐 Закрытое сообщество\n🔵 Значок Plus\n\nДо: ${expiresAt.toLocaleDateString('ru-RU')}`;
+  
+  if (inviteLink) {
+    userMessage += `\n\n🔐 <b>Закрытое сообщество Plus</b>\nДля вступления перейдите по ссылке и подайте заявку:\n\n${inviteLink}\n\n⚠️ Ссылка одноразовая.`;
+  }
+  
+  await sendUserMessage(telegramId, userMessage);
   await answerCallbackQuery(id, '✅ Plus выдан');
   await editMessageReplyMarkup(message.chat.id, message.message_id);
-  await sendAdminMessage(message.chat.id, `✅ Plus выдан ${profile.username ? '@' + profile.username : telegramId}`);
+  await sendAdminMessage(message.chat.id, `✅ Plus выдан ${profile.username ? '@' + profile.username : telegramId}${inviteLink ? ' (ссылка отправлена)' : ''}`);
 }
 
 async function handleSubGrantPremium(callbackQuery: any, telegramId: string) {
